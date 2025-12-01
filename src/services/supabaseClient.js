@@ -1,0 +1,13 @@
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://hhdronajrkxnetwqppkg.supabase.co";
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoZHJvbmFqcmt4bmV0d3FwcGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNTY3MjIsImV4cCI6MjA3OTkzMjcyMn0.sIDB1ufidIyBxbzPXElYdmQr9uoy_igfVLaqxAHx5WU";
+
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error("Missing Supabase environment variables!");
+}
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
