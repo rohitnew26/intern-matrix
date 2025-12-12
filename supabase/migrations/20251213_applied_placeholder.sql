@@ -1,0 +1,3 @@
+-- Placeholder for remote-applied migration 20251213
+-- This file exists locally to align with remote migration history.
+-- No-op.

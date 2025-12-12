@@ -1,7 +1,10 @@
 // API Client
 import axios from 'axios';
 
+const BASE_URL = "https://intern-matrix-backend.vercel.app";
+
 const apiClient = axios.create({
+  baseURL: BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -22,3 +25,5 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+export { BASE_URL };

@@ -1,43 +1,24 @@
-import { supabase } from "./supabaseClient";
+import apiClient from './apiClient';
 
-const CERT_TABLE = "certificates";
-
-export const fetchCertificates = async ({ status = "all", limit = 200 } = {}) => {
-  let query = supabase
-    .from(CERT_TABLE)
-    .select("*")
-    .order("issued_on", { ascending: false })
-    .limit(limit);
-
-  if (status && status !== "all") {
-    query = query.eq("status", status);
-  }
-
+export const fetchCertificates = async ({ status = 'all', limit = 200 } = {}) => {
   try {
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error("Admin certificate fetch failed", error);
+    const params = { _limit: limit, _sort: 'issued_on', _order: 'desc' };
+    if (status && status !== 'all') params.status = status;
+    const res = await apiClient.get('/certificates', { params });
+    return res.data || [];
+  } catch (err) {
+    console.error('Admin certificate fetch failed', err);
     return [];
   }
 };
 
 export const updateCertificateStatus = async ({ certificateId, status }) => {
-  if (!certificateId) {
-    throw new Error("Certificate id is required");
+  if (!certificateId) throw new Error('Certificate id is required');
+  try {
+    const res = await apiClient.patch(`/certificates/${encodeURIComponent(certificateId)}`, { status });
+    return res.data;
+  } catch (err) {
+    console.error('Failed to update certificate status', err);
+    throw err;
   }
-
-  const { data, error } = await supabase
-    .from(CERT_TABLE)
-    .update({ status })
-    .eq("id", certificateId)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
 };

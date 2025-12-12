@@ -1,20 +1,49 @@
-
+/* -------------------------------------------------
+   🔹 Tailwind + Google Font
+--------------------------------------------------- */
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap');
+
+.oswald {
+  font-family: 'Oswald', sans-serif;
+}
+
+/* -------------------------------------------------
+   🔹 Fade Animations
+--------------------------------------------------- */
 @keyframes fade {
   0% { opacity: 0; transform: translateY(10px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+  animation: fade 0.6s ease-in-out;
+}
+
+/* Fade Up */
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up {
+  animation: fadeUp 1s ease-out forwards;
+}
+
+/* -------------------------------------------------
+   🔹 Bounce Animation
+--------------------------------------------------- */
+@keyframes bounce {
+  50% { transform: translateY(-10px); }
 }
 
 .bounce {
   animation: bounce 1s infinite;
 }
 
-@keyframes bounce {
-  50% {
-    transform: translateY(-10px);
-  }
-}
+/* -------------------------------------------------
+   🔹 Text Clamp
+--------------------------------------------------- */
 .clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -22,54 +51,57 @@
   overflow: hidden;
 }
 
-.typing {
-  width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  border-right: 3px solid yellow;
-  animation: typing 3s steps(30) forwards, blink .5s step-end infinite;
+/* -------------------------------------------------
+   🔹 Swiping Hover Animation
+--------------------------------------------------- */
+.swipe-up-strong {
+  display: inline-block;
+  transition: all 0.35s ease;
 }
 
+.swipe-up-strong:hover {
+  transform: translateY(-10px) scale(1.05);
+  opacity: 0.8;
+}
+
+/* -------------------------------------------------
+   🔹 Typing Effect (Optimized)
+--------------------------------------------------- */
 @keyframes typing {
-  from { width: 0 }
-  to { width: 100% }
+  from { width: 0; }
+  to { width: 100%; }
 }
 
 @keyframes blink {
-  50% { border-color: transparent }
+  50% { border-color: transparent; }
+}
+
+/* Smooth, responsive typing effect */
+.typing {
+  width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 3px solid #facc15; /* yellow-400 */
+  animation: typing 3s steps(40, end) forwards,
+             blink .7s step-end infinite;
+}
+
+/* Prevent mobile breaking line */
+@media (max-width: 480px) {
+  .typing {
+    max-width: 100%;
+    font-size: 1.65rem; /* Adjust for small phones */
+  }
 }
 
 
-@keyframes fadeUp {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* // navbar _____________ */
+
+ @keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.fade-up {
-  animation: fadeUp 1s ease-out forwards;
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
 }
-
-.animate-fade {
-  animation: fade 0.6s ease-in-out;
-}
-.oswald {
-    font-family: 'Oswald', sans-serif;
-  }
-
-  
-  .swipe-up-strong {
-    display: inline-block;
-    transition: all 0.35s ease;
-  }
-  
-  .swipe-up-strong:hover {
-    transform: translateY(-10px) scale(1.05);
-    opacity: 0.8;
-  }
-  

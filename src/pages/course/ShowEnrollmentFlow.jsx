@@ -3,6 +3,11 @@ import paymentQR from "../../assets/images/pymentQR.png";
 import { createEnrollment } from "../../services/enrollmentService";
 import { sendEnrollmentEmail } from "../../services/notificationService";
 import { formatCurrency } from "../../utils/helpers";
+import {
+  createPhonePePayment,
+  fetchPhonePeStatus,
+} from "../../services/phonepeService";
+import { createPendingOrder } from "../../services/orderService";
 
 const generateInvoiceNumber = () => {
   const timePart = Date.now().toString(36).toUpperCase();
@@ -39,6 +44,23 @@ const ShowEnrollmentFlow = ({
 }) => {
   const [formErrors, setFormErrors] = useState({});
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isPhonePeRedirecting, setIsPhonePeRedirecting] = useState(false);
+  const [phonePeStatus, setPhonePeStatus] = useState(null);
+  const [isPollingStatus, setIsPollingStatus] = useState(false);
+
+  const PENDING_PHONEPE_KEY = "imx_phonepe_pending";
+
+  const persistPendingPayment = (record) => {
+    try {
+      const raw = localStorage.getItem(PENDING_PHONEPE_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      const filtered = list.filter((item) => item.tx !== record.tx);
+      filtered.push(record);
+      localStorage.setItem(PENDING_PHONEPE_KEY, JSON.stringify(filtered));
+    } catch (err) {
+      console.warn("Unable to persist pending PhonePe payment", err);
+    }
+  };
 
   const validateDetails = () => {
     const errors = {};
@@ -188,7 +210,7 @@ const ShowEnrollmentFlow = ({
           currency: "INR",
         });
       } catch (supabaseError) {
-        console.warn("Supabase enrollment creation failed", supabaseError);
+        console.warn("Enrollment creation (backend) failed", supabaseError);
       }
 
       let emailFailed = false;
@@ -222,8 +244,12 @@ const ShowEnrollmentFlow = ({
         "INR"
       )}.`;
       const paymentLine = `Please pay ₹${displayAmount} to ${PAYMENT_UPI_ID} so we can lock your internship start date.`;
+      // const statusLine = emailFailed
+      //   ? "Email notification could not be sent automatically. Please forward your payment screenshot to update@internmatrix.com."
+      //   : "Our operations inbox (update@internmatrix.com) has been notified with your invoice PDF (check your email copy too).";
+
       const statusLine = emailFailed
-        ? "Email notification could not be sent automatically. Please forward your payment screenshot to update@internmatrix.com."
+        ? "Optionally forward your payment screenshot to info@internmatrix.com."
         : "Our operations inbox (update@internmatrix.com) has been notified with your invoice PDF (check your email copy too).";
 
       setCheckoutSuccess(
@@ -266,6 +292,118 @@ const ShowEnrollmentFlow = ({
     }
   };
 
+  const pollPhonePeStatus = async (transactionId) => {
+    if (!transactionId) return;
+    setIsPollingStatus(true);
+    setCheckoutError("");
+    setCheckoutSuccess("Checking payment status...");
+    const maxAttempts = 10;
+    const delay = 3000;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const statusResp = await fetchPhonePeStatus(transactionId);
+        setPhonePeStatus(statusResp);
+        const code = statusResp?.code || statusResp?.status || statusResp?.state;
+        if (code === "SUCCESS" || code === "PAYMENT_SUCCESS" || code === "COMPLETED") {
+          setCheckoutSuccess("Payment confirmed via PhonePe.");
+          setCheckoutError("");
+          return true;
+        }
+        if (code === "FAILED" || code === "PAYMENT_FAILED") {
+          setCheckoutError("Payment failed. Please retry.");
+          return false;
+        }
+      } catch (pollErr) {
+        if (attempt === maxAttempts) {
+          setCheckoutError(
+            "Unable to confirm payment right now. Please check your statement or retry."
+          );
+          return false;
+        }
+      }
+      await new Promise((res) => setTimeout(res, delay));
+    }
+    setCheckoutError(
+      "Payment status pending. Please confirm after a minute if not reflected."
+    );
+    return false;
+  };
+
+  const handlePhonePePay = async () => {
+    setCheckoutError("");
+    setCheckoutSuccess("");
+    setIsPhonePeRedirecting(true);
+    try {
+      const payload = {
+        amount: Number(displayAmount) || 0,
+        currency: "INR",
+        courseId: course?.id || courseIdentifier,
+        courseSlug,
+        userEmail: detailsForm.email || user?.email,
+        userName: detailsForm.fullName || user?.user_metadata?.full_name,
+      };
+
+      const response = await createPhonePePayment(payload);
+      const redirect = response?.payPageUrl || response?.redirectUrl || response?.intentUrl;
+      const transactionId =
+        response?.orderId || response?.transactionId || response?.merchantTransactionId;
+
+      if (transactionId) {
+        const priceCentsCalculated = Math.round((Number(displayAmount) || 0) * 100);
+        
+        // Ensure we have user ID - if not logged in, user must login first
+        if (!user?.id) {
+          setCheckoutError("Please log in before making payment to ensure enrollment is properly tracked.");
+          setIsPhonePeRedirecting(false);
+          return;
+        }
+        
+        const pendingRecord = {
+          tx: transactionId,
+          userId: user.id,
+          course,
+          priceCents: priceCentsCalculated,
+          currency: "INR",
+        };
+        console.log("[ShowEnrollmentFlow] Persisting pending payment:", pendingRecord);
+        persistPendingPayment(pendingRecord);
+
+        // Also persist a pending order server-side so enrollment can complete even if local storage is cleared
+        try {
+          await createPendingOrder({
+            userId: user.id,
+            orderId: transactionId,
+            course,
+            priceCents: priceCentsCalculated,
+            currency: "INR",
+          });
+        } catch (orderErr) {
+          console.warn("[ShowEnrollmentFlow] Unable to pre-create pending order", orderErr);
+        }
+      } else {
+        console.warn("[ShowEnrollmentFlow] No transaction ID received from PhonePe");
+      }
+      if (redirect) {
+        window.location.href = redirect;
+        return;
+      }
+
+      setCheckoutError(
+        "PhonePe payment link unavailable. Please retry or use UPI QR."
+      );
+
+      if (transactionId) {
+        await pollPhonePeStatus(transactionId);
+      }
+    } catch (error) {
+      setCheckoutError(error?.message || "Unable to start PhonePe payment.");
+    } finally {
+      setIsPhonePeRedirecting(false);
+      setIsPollingStatus(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -295,6 +433,30 @@ const ShowEnrollmentFlow = ({
               Please complete the payment using UPI. You can manually enter the
               UPI ID or scan the QR code to proceed.
             </p>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">Pay instantly with PhonePe</p>
+                  <p className="text-xs text-blue-800">Redirect to PhonePe; we’ll check status when you return.</p>
+                </div>
+                <button
+                  onClick={handlePhonePePay}
+                  disabled={isPhonePeRedirecting}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-60"
+                >
+                  {isPhonePeRedirecting ? "Redirecting..." : "Pay with PhonePe"}
+                </button>
+              </div>
+              {isPollingStatus && (
+                <p className="text-xs text-blue-900">Checking payment status...</p>
+              )}
+              {phonePeStatus && (
+                <p className="text-xs text-blue-900">
+                  Status: {phonePeStatus.status || phonePeStatus.code}
+                </p>
+              )}
+            </div>
 
             {/* ---------- UPI + QR SCANNER GRID ----------- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -553,9 +715,7 @@ const ShowEnrollmentFlow = ({
                 <select
                   className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
                   value={detailsForm.isCR}
-                  onChange={(e) =>
-                    handleDetailChange("isCR", e.target.value)
-                  }
+                  onChange={(e) => handleDetailChange("isCR", e.target.value)}
                 >
                   <option value="No">No</option>
                   <option value="Yes">Yes</option>
@@ -567,11 +727,11 @@ const ShowEnrollmentFlow = ({
                 <input
                   type="text"
                   className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
-                  value={detailsForm.course}
-                  onChange={(e) =>
-                    handleDetailChange("course", e.target.value)
-                  }
+                  placeholder="Enter course name"
+                  required
+                  onChange={(e) => handleDetailChange("course", e.target.value)}
                 />
+
                 {formErrors.course && (
                   <p className="text-[10px] text-red-500 mt-1">
                     {formErrors.course}
@@ -599,5 +759,3 @@ const ShowEnrollmentFlow = ({
 };
 
 export default ShowEnrollmentFlow;
-
-

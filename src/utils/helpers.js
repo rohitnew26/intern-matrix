@@ -74,7 +74,8 @@ export const getCourseDetailPath = (courseOrSlug, fallbackKey = "course") => {
 
   if (!normalized) return "/course";
 
-  return `/${encodeURIComponent(normalized)}`;
+  // Always nest course detail under /course/<slug>
+  return `/course/${encodeURIComponent(normalized)}`;
 };
 
 export const parseCourseRouteParam = (param = "") => {

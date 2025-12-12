@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Filter } from "lucide-react";
 import { FaStar } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { skillsData as fallbackSkills } from "../../assets/courseData/data";
-import { fetchCourses } from "../../services/courseService";
+import { supabase } from "../../lib/supabaseClient";
 import { getCourseDetailPath } from "../../utils/helpers";
 
 const Courses = () => {
@@ -15,7 +14,6 @@ const Courses = () => {
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -23,19 +21,44 @@ const Courses = () => {
     const loadCourses = async () => {
       try {
         setLoading(true);
-        const data = await fetchCourses();
-        if (!ignore && Array.isArray(data) && data.length) {
-          setCourses(data);
+        const { data, error } = await supabase
+          .from("courses")
+          .select("*")
+          .eq("status", "published")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (!ignore && Array.isArray(data)) {
+          const formatted = data.map((course) => {
+            // Direct conversion from DB paise to rupees
+            const priceRupees = course.price_cents ? Math.round(course.price_cents / 100) : 0;
+            const mrpRupees = course.mrp_cents ? Math.round(course.mrp_cents / 100) : priceRupees;
+
+            return {
+              ...course,
+              name: course.title,
+              image:
+                course.thumbnail_url ||
+                course.cover_image ||
+                course.course_image ||
+                course.banner_url ||
+                course.thumbnail,
+              offerPrice: priceRupees,
+              originalPrice: mrpRupees,
+              price: priceRupees,
+              category: course.category,
+              desc: course.description?.replace(/<[^>]+>/g, ""),
+            };
+          });
+
+          setCourses(formatted);
         }
       } catch (err) {
-        if (!ignore) {
-          console.error("Failed to fetch courses", err);
-          setError(err);
-        }
+        console.error("Failed to fetch courses", err);
+        setCourses([]); // just empty silently
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (!ignore) setLoading(false);
       }
     };
 
@@ -45,7 +68,7 @@ const Courses = () => {
     };
   }, []);
 
-  const sourceData = courses.length ? courses : fallbackSkills;
+  const sourceData = courses;
 
   const instructors = useMemo(() => {
     return [...new Set(sourceData.map((c) => c.instructor || c.instructor_name || ""))].filter(Boolean);
@@ -99,21 +122,11 @@ const Courses = () => {
       )}
 
       <aside
-        className={`bg-white rounded-xl p-4 shadow-md space-y-6 lg:space-y-6 w-full max-w-xs lg:max-w-none lg:w-64 flex-shrink-0
+        className={`bg-white rounded-xl p-4 shadow-md space-y-6 lg:w-64 flex-shrink-0
         lg:sticky lg:top-20 transition-transform duration-300
         ${showSidebar ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0 lg:relative fixed top-0 left-0 h-full lg:h-auto z-40 lg:z-auto overflow-y-auto`}
+        lg:translate-x-0 fixed top-0 left-0 h-full lg:h-auto z-40 overflow-y-auto`}
       >
-        <div className="flex items-center justify-between lg:hidden">
-          <h2 className="text-base font-semibold">Filters</h2>
-          <button
-            onClick={() => setShowSidebar(false)}
-            className="text-gray-600 hover:text-gray-900 text-xl"
-          >
-            ✕
-          </button>
-        </div>
-
         <button
           onClick={() => {
             setSelectedInstructor("");
@@ -131,11 +144,7 @@ const Courses = () => {
           <h2 className="font-semibold text-lg mb-2">Instructor</h2>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedInstructor === ""}
-                onChange={() => setSelectedInstructor("")}
-              />
+              <input type="checkbox" checked={selectedInstructor === ""} onChange={() => setSelectedInstructor("")} />
               <span>All</span>
             </label>
 
@@ -156,23 +165,10 @@ const Courses = () => {
         <div>
           <h2 className="font-semibold text-lg mb-2">Difficulty</h2>
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedLevel === ""}
-                onChange={() => setSelectedLevel("")}
-              />
-              <span>All</span>
-            </label>
-
-            {levels.map((l) => (
+            {["", ...levels].map((l) => (
               <label key={l} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selectedLevel === l}
-                  onChange={() => setSelectedLevel(l)}
-                />
-                <span>{l}</span>
+                <input type="checkbox" checked={selectedLevel === l} onChange={() => setSelectedLevel(l)} />
+                <span>{l || "All"}</span>
               </label>
             ))}
           </div>
@@ -183,11 +179,7 @@ const Courses = () => {
           <h2 className="font-semibold text-lg mb-2">Category</h2>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={selectedCategory === ""}
-                onChange={() => setSelectedCategory("")}
-              />
+              <input type="checkbox" checked={selectedCategory === ""} onChange={() => setSelectedCategory("")} />
               <span>All</span>
             </label>
 
@@ -228,76 +220,64 @@ const Courses = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {error && !courses.length && (
-          <p className="text-sm text-red-500 mb-4">
-            Unable to load live catalog right now. Showing saved courses instead.
-          </p>
-        )}
-
         <main className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {loading && !courses.length &&
             Array.from({ length: 6 }).map((_, idx) => (
               <div key={`skeleton-${idx}`} className="h-80 rounded-2xl bg-white/40 animate-pulse" />
             ))}
+
           {filteredCourses.map((skill, idx) => {
             const detailPath = getCourseDetailPath(skill, `course-${idx}`);
             return (
-            <div
-              key={idx}
-              className="relative rounded-2xl shadow transition transform hover:scale-105 overflow-hidden group"
-            >
-              {skill.new && (
-                <span className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rotate-29 rounded-lg shadow">
-                  NEW
-                </span>
-              )}
+              <div
+                key={idx}
+                className="relative rounded-2xl shadow transition transform hover:scale-105 overflow-hidden group"
+              >
+                <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 p-4 mb-4">
+                  <Link to={detailPath}>
+                    <div
+                      className="h-[180px] w-full mb-4 overflow-hidden rounded-lg bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${skill.image || skill.cover_image || "/placeholder-course.jpg"})`,
+                      }}
+                    >
+                      <p className="m-3 inline-flex justify-center items-center text-sm text-black bg-amber-200 rounded-2xl h-5 font-semibold px-3">
+                        {skill.category || skill.tags?.[0] || "General"}
+                      </p>
+                    </div>
+                  </Link>
 
-              <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 p-4 mb-4">
-                <Link to={detailPath}>
-                  <div
-                    className="h-[180px] w-full mb-4 overflow-hidden rounded-lg bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url(${skill.image || skill.cover_image || "/placeholder-course.jpg"})`,
-                    }}
-                  >
-                    <p className="m-3 inline-flex justify-center items-center text-sm text-black bg-amber-200 rounded-2xl h-5 font-semibold px-3">
-                      {skill.category || skill.tags?.[0] || "General"}
-                    </p>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {skill.name || skill.title}
+                  </h2>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1 text-yellow-500">
+                      <FaStar />
+                      <span className="text-sm font-medium text-black">
+                        {skill.rating || "4.8"}
+                      </span>
+                      <span className="text-xs text-black">
+                        ({skill.ratersCount || 120})
+                      </span>
+                    </div>
                   </div>
-                </Link>
 
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {skill.name || skill.title}
-                </h2>
-
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-1 text-yellow-500">
-                    <FaStar />
-                    <span className="text-sm font-medium text-black">
-                      {skill.rating || "4.8"}
-                    </span>
-                    <span className="text-xs text-black">
-                      ({skill.ratersCount || 120})
-                    </span>
-                  </div>
+                  <p className="clamp-2 text-white text-sm mb-4">
+                    {skill.desc || skill.description}
+                  </p>
                 </div>
 
-                <p className="clamp-2 text-white text-sm mb-4">
-                  {skill.desc || skill.description}
-                </p>
-              </div>
-
-              <div className="px-4 pb-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <p className="text-gray-500 line-through font-semibold">
-                      ₹{skill.price || Math.round((skill.price_cents || 0) / 100)}
-                    </p>
-                    <p className="text-green-600 font-bold">
-                      ₹{skill.offerPrice || skill.price || Math.round((skill.price_cents || 0) / 100)}
-                    </p>
-                  </div>
-
+                <div className="px-4 pb-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <p className="text-gray-500 line-through font-semibold">
+                        ₹{skill.originalPrice}
+                      </p>
+                      <p className="text-green-600 font-bold">
+                        ₹{skill.offerPrice}
+                      </p>
+                    </div>
 
                     <Link
                       to={detailPath}
@@ -305,12 +285,13 @@ const Courses = () => {
                     >
                       Enroll now
                     </Link>
-                </div>  
+                  </div>
+                </div>
               </div>
-            </div>
-          );})}
+            );
+          })}
 
-          {filteredCourses.length === 0 && (
+          {!loading && filteredCourses.length === 0 && (
             <p className="col-span-full text-center">No results</p>
           )}
         </main>
@@ -320,4 +301,3 @@ const Courses = () => {
 };
 
 export default Courses;
- 
