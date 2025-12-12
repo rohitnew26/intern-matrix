@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FaStar } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { Compass } from "lucide-react";
-import apiClient from "../../services/apiClient";
+import { supabase } from "../../lib/supabaseClient";
 import { getCourseDetailPath } from "../../utils/helpers";
 import CourseCardSkeleton from "../skeletonLoadingUi/CourseCardSkeleton";
 
@@ -18,21 +18,23 @@ export default function SkillsPage() {
     const loadCourses = async () => {
       try {
         setLoading(true);
-        const res = await apiClient.get("/api/user/courses");
+        const { data, error } = await supabase.from("courses").select("*");
 
-        const data = res.data?.courses;
+        if (error) throw error;
 
-        if (!ignore && Array.isArray(data)) {
-          const formatted = data.map((course) => ({
+        const arr = data || [];
+
+        if (!ignore && Array.isArray(arr)) {
+          const formatted = arr.map((course) => ({
             ...course,
             name: course.title,
-            image: course.thumbnail,
-            offerPrice: course.offerprice || 0,
-            originalPrice:
-              course.originalprice || Math.round(course.price_cents / 100),
-            price: Math.round(course.price_cents / 100),
+            image: course.thumbnail_url || course.thumbnail || course.image,
+            offerPrice: course.offerprice || Math.round((course.price_cents || 0) / 100),
+            originalPrice: course.mrp_cents ? Math.round(course.mrp_cents / 100) : Math.round((course.price_cents || 0) / 100),
+            price: Math.round((course.price_cents || 0) / 100),
             category: course.category,
-            desc: course.description?.replace(/<[^>]+>/g, ""),
+            course_type: course.course_type || course.type || course.category || "General",
+            desc: (course.overview || course.description || "").replace(/<[^>]+>/g, ""),
           }));
 
           setCourses(formatted.reverse());
@@ -174,11 +176,11 @@ export default function SkillsPage() {
                 <div className="flex justify-between items-center">
                   <div className="flex flex-row gap-2 items-center">
                     <span className=" text-lg text-gray-500 line-through font-semibold">
-                      ₹{skill.originalprice}
+                      ₹{skill.originalPrice}
                     </span>
-                    {skill.originalPrice && (
+                    {(skill.offerPrice || skill.price) && (
                       <span className="text-green-600 text-lg text-bold">
-                        ₹{skill.offerprice || skill.price}
+                        ₹{skill.offerPrice || skill.price}
                       </span>
                     )}
                   </div>

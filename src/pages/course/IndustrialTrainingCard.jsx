@@ -79,14 +79,16 @@ const Courses = () => {
   // Dynamically extract unique branches from course data
   const branches = useMemo(
     () => {
-      const branchSet = new Set();
+      const map = new Map();
       sourceData.forEach((c) => {
-        if (c.branch && c.branch.trim()) {
-          branchSet.add(c.branch.trim());
+        const b = (c.branch || "").trim();
+        if (b) {
+          const key = b.toLowerCase();
+          if (!map.has(key)) map.set(key, b);
         }
       });
-      // Sort the branches for consistent display
-      const branchArray = Array.from(branchSet).sort();
+      // Preserve original casing but dedupe case-insensitively
+      const branchArray = Array.from(map.values()).sort((a, b) => a.localeCompare(b));
       if (branchArray.length > 0) {
         console.log("🏢 Available branches:", branchArray);
       }
@@ -100,10 +102,7 @@ const Courses = () => {
   const durations = ["2", "3", "4", "5", "8", "12"];
 
   const categories = useMemo(
-    () =>
-      [
-        ...new Set(sourceData.map((c) => c.category || c.tags?.[0] || "")),
-      ].filter(Boolean),
+    () => [...new Set(sourceData.map((c) => c.category || ""))].filter(Boolean),
     [sourceData]
   );
 
@@ -114,11 +113,7 @@ const Courses = () => {
     const result = sourceData.filter((course) => {
       const courseName = (course.name || course.title || "").toLowerCase();
       const branchName = (course.branch || "").toLowerCase();
-      const categoryName = (
-        course.category ||
-        course.tags?.[0] ||
-        ""
-      ).toLowerCase();
+      const categoryName = (course.category || "").toLowerCase();
       const priceValue =
         parseInt(course.price, 10) ||
         Math.round((course.price_cents || 0) / 100) ||
@@ -136,7 +131,7 @@ const Courses = () => {
 
       // Handle branch filter with proper string comparison
       const courseBranch = (course.branch || "").trim();
-      const branchMatches = !selectedBranch || courseBranch === selectedBranch;
+      const branchMatches = !selectedBranch || (courseBranch.toLowerCase() === selectedBranch.toLowerCase());
 
       // Debug logging when branch filter is active
       if (selectedBranch && !branchMatches) {
@@ -147,8 +142,7 @@ const Courses = () => {
         matchesSearch &&
         branchMatches &&
         (!selectedLevel || course.level === selectedLevel) &&
-        (!selectedCategory ||
-          (course.category || course.tags?.[0]) === selectedCategory) &&
+        (!selectedCategory || course.category === selectedCategory) &&
         (!selectedDuration || durationNumber === selectedDuration) &&
         priceValue <= priceRange
       );
@@ -285,7 +279,7 @@ const Courses = () => {
                   <input
                     type="checkbox"
                     checked={selectedBranch === b}
-                    onChange={() => setSelectedBranch(b)}
+                    onChange={() => setSelectedBranch(b.trim())}
                   />
                   <span>{b}</span>
                 </label>
@@ -374,6 +368,7 @@ const Courses = () => {
                 >
                   <Link
                     to={detailPath}
+                    state={{ course: skill, finalOfferPrice: skill.offerPrice || skill.price }}
                     onMouseEnter={prefetchCourseDetails}
                     onFocus={prefetchCourseDetails}
                   >
@@ -421,6 +416,7 @@ const Courses = () => {
 
                       <Link
                         to={detailPath}
+                        state={{ course: skill, finalOfferPrice: skill.offerPrice || skill.price }}
                         onMouseEnter={prefetchCourseDetails}
                         onFocus={prefetchCourseDetails}
                         className="bg-blue-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-blue-700 transition shadow-md"

@@ -1,7 +1,7 @@
 // API Client
 import axios from 'axios';
 
-const BASE_URL = "https://intern-matrix-backend.vercel.app";
+const BASE_URL = "https://intern-matrix-backend.vercel.app//";
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

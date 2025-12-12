@@ -87,7 +87,7 @@ const normalizeCourse = (record) => {
 
     // Tags & Category
     tags: record.tags || [],
-    category: record.tags?.[0] || "General",
+    category: record.category || record.tags?.[0] || "General",
 
     // Content
     content: Array.isArray(record.content) ? record.content : [],

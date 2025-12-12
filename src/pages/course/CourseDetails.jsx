@@ -138,6 +138,10 @@ const CourseDetails = () => {
   // Get finalOfferPrice from location state if passed from OnlineCourseCard
   const locationState = location.state || {};
   const passedFinalOfferPrice = locationState.finalOfferPrice;
+  const passedCourse = locationState.course || null;
+
+  // If course is passed via state, set it immediately
+  const [passedCourseData] = useState(passedCourse);
 
   const fallbackCourse = useMemo(() => {
     if (!safeCourseParam && !courseSlug && !courseIdentifier) return null;
@@ -166,8 +170,20 @@ const CourseDetails = () => {
         let skillsArray = [];
         let courseData = null;
 
+        // If course is passed via location state, use it immediately
+        if (passedCourseData) {
+          courseData = passedCourseData;
+          console.log("✅ Using passed course from state:", courseData.title);
+        }
+
         // First, fetch all courses from backend API
         try {
+          // If a prefetched course was passed via location.state, use it immediately
+          if (passedCourse) {
+            courseData = passedCourse;
+            // ensure skills array contains the passed course for fallback matching
+            skillsArray = Array.isArray(skillsArray) ? [passedCourse, ...skillsArray] : [passedCourse];
+          }
           const response = await apiClient.get("/api/user/courses");
           let backendCourses = response.data || [];
 
@@ -367,7 +383,7 @@ const CourseDetails = () => {
     return () => {
       ignore = true;
     };
-  }, [courseIdentifier, courseSlug, matchCourseFromList, safeCourseParam]);
+  }, [courseIdentifier, courseSlug, matchCourseFromList, safeCourseParam, passedCourseData]);
 
   const [showMore, setShowMore] = useState(false);
   const SPECIAL_COUPON_CODE = "MEGA99";
