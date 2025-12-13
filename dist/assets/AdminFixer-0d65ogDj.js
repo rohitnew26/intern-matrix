@@ -1,4 +1,4 @@
-import{j as a,h as i}from"./index-OIN1c1r4.js";import{r as u}from"./router-Z28cWG60.js";import"./react-Bq7xPAhO.js";import"./ui-DI8vkpLQ.js";function R(){const[d,r]=u.useState(""),[c,t]=u.useState(!1),p=async()=>{t(!0),r("Detecting your email...");try{const{data:{user:e},error:o}=await i.auth.getUser();if(o||!e){r(`
+import{j as a,h as i}from"./index-OnP03quI.js";import{r as u}from"./router-Z28cWG60.js";import"./react-Bq7xPAhO.js";import"./ui-DI8vkpLQ.js";function R(){const[d,r]=u.useState(""),[c,t]=u.useState(!1),p=async()=>{t(!0),r("Detecting your email...");try{const{data:{user:e},error:o}=await i.auth.getUser();if(o||!e){r(`
 ❌ NOT LOGGED IN
 
 Please log in to the admin panel first, then come back here.

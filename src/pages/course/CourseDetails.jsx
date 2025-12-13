@@ -389,6 +389,8 @@ const CourseDetails = () => {
   const [showMore, setShowMore] = useState(false);
   const SPECIAL_COUPON_CODE = "MEGA99";
   const SPECIAL_DISCOUNT = 0.99; // 99% off
+  // Additional dummy coupon (case-insensitive) accepted for testing
+  const DUMMY_COUPON_CODE = "megaoff99";
   const DEFAULT_COUPON_DISCOUNT = 0.25; // 25% off legacy
 
   // Parse backend coupon discount values which may be numbers or strings
@@ -679,6 +681,17 @@ const CourseDetails = () => {
     }
 
     const normalizedCode = rawCode.toLowerCase().trim();
+
+    // Accept the dummy testing coupon 'megaoff99' as an alias for 99% off
+    if (normalizedCode === DUMMY_COUPON_CODE.toLowerCase()) {
+      setIsCouponApplied(true);
+      setCouponDiscount(SPECIAL_DISCOUNT);
+      setCouponError("");
+      // optional celebration trigger
+      setCelebrateTrigger(true);
+      setTimeout(() => setCelebrateTrigger(false), 1200);
+      return;
+    }
 
     // Global 99% off coupon
     if (normalizedCode === SPECIAL_COUPON_CODE.toLowerCase()) {
