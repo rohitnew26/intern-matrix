@@ -71,9 +71,9 @@ const normalizeCourse = (record) => {
     branch: record.branch,
     category: record.category,
 
-    // Type - map from DB type field
-    type: record.type,
-    course_type: record.type,
+    // Type - map from DB type or course_type field (some DB versions use course_type)
+    type: record.type || record.course_type || record.courseType || "",
+    course_type: record.course_type || record.type || record.courseType || "",
 
     // Pricing - Cards expect:
     // - price = MRP/original (crossed out)

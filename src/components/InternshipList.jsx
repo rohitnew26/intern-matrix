@@ -22,9 +22,13 @@ const InternshipList = ({
       const branchMatch =
         branchFilter.length === 0 ||
         branchFilter.some((branch) =>
-          internship.branches.some(
-            (b) => b.toLowerCase() === branch.toLowerCase()
-          )
+          internship.branches.some((b) => {
+            const left = (b || "").toLowerCase();
+            const right = (branch || "").toLowerCase();
+            // allow partial matches both ways so values like
+            // "Civil Engineering (CE)" match filter "civil" or "CE"
+            return left.includes(right) || right.includes(left);
+          })
         );
 
       const durationMatch =

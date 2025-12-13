@@ -24,7 +24,7 @@ export default function LazyImage({
   children,
   width,
   height,
-  fallbackSrc = "/placeholder-course.jpg",
+  fallbackSrc = null,
 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -62,6 +62,16 @@ export default function LazyImage({
     ...style,
   };
 
+  // Generate a small inline SVG fallback so the UI always shows an image when none is available
+  const finalFallback = (() => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'><rect fill='%23f3f4f6' width='600' height='400' /><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial, Helvetica, sans-serif' font-size='28'>No image available</text></svg>`;
+    try {
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    } catch (e) {
+      return "/placeholder-course.jpg";
+    }
+  })();
+
   if (asBackground) {
     return (
       <div
@@ -72,7 +82,9 @@ export default function LazyImage({
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
-          backgroundImage: visible ? `url(${loadError ? fallbackSrc : src})` : undefined,
+          backgroundImage: visible
+            ? `url(${loadError ? (fallbackSrc || finalFallback) : src})`
+            : undefined,
           ...commonWrapperStyle,
         }}
       >
@@ -156,7 +168,7 @@ export default function LazyImage({
 
       {visible && (
         <img
-          src={loadError ? fallbackSrc : src}
+          src={loadError ? (fallbackSrc || finalFallback) : src}
           alt={alt}
           className={imgClassName}
           style={{
