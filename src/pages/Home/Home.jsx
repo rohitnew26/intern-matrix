@@ -142,7 +142,7 @@ function Home() {
                 delay: 0.7,
               },
               {
-                to: "/verify",
+                to: "/verify-certificate",
                 text: "Verify Certificate",
                 style:
                   "border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm",
