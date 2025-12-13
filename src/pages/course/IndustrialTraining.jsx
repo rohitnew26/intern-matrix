@@ -49,17 +49,28 @@ export default function SkillsPage() {
             return {
               ...course,
               name: course.title,
+              // keep common image keys CourseDetails expects
+              thumbnail_url: course.thumbnail_url || course.thumbnail || course.banner_url || null,
+              banner_url: course.banner_url || course.thumbnail_url || null,
+              gallery_images: course.gallery_images || null,
+              cover_image: course.cover_image || course.thumbnail || null,
               image:
                 course.thumbnail_url ||
-                course.cover_image ||
-                course.course_image ||
-                course.banner_url ||
+                course.gallery_images ||
+                course.banner_url || 
                 course.thumbnail,
+              // price fields: include both display-friendly and canonical keys
               offerPriceDisplay: priceRupees,
               originalPriceDisplay: mrpRupees,
               price: priceRupees,
+              offerPrice: priceRupees,
+              originalprice: mrpRupees,
               category: course.category,
               desc: course.description?.replace(/<[^>]+>/g, ""),
+              // Ensure CourseDetails can read expected fields
+              description: course.description || course.overview || course.detailed_description ||"",
+              overview: course.overview || course.description || "",
+              detailed_description: course.detailed_description || (course.detailedDescription || { sections: [] }),
             };
           });
 
@@ -146,13 +157,13 @@ export default function SkillsPage() {
               transition-all duration-500 border border-indigo-200 hover:border-indigo-400 
               overflow-hidden"
             >
-              <Link to={detailPath}>
+              <Link to={detailPath} state={{ course: skill, finalOfferPrice: skill.offerPrice ?? skill.offerPriceDisplay ?? skill.price }}>
                 <div className="relative">
                   <div
                     className="h-[180px] w-full bg-cover bg-center"
                     style={{
                       backgroundImage: `url(${
-                        skill.image || "/placeholder.jpg"
+                        skill.image || skill.thumbnail_url || skill.cover_image || "/placeholder.jpg"
                       })`,
                     }}
                   />
@@ -200,6 +211,11 @@ export default function SkillsPage() {
 
                   <Link
                     to={detailPath}
+                    state={{
+                      course: skill,
+                      finalOfferPrice:
+                        skill.offerPrice ?? skill.offerPriceDisplay ?? skill.price,
+                    }}
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-4 py-2 rounded-xl shadow-md hover:scale-105 transition-all"
                   >
                     Enroll

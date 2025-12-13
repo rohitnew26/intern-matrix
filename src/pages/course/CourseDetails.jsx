@@ -15,6 +15,7 @@ import img3 from "../../assets/courseData/img/3.svg";
 import BannerSection from "../../components/banner/offer.jsx";
 import { useAuth } from "../../context/AuthContext";
 import CourseSkeletonuLoadingUi from "../../pages/skeletonLoadingUi/CourseDetailsLoadingUi.jsx";
+import { supabase } from "../../lib/supabaseClient";
 
 import RecognizedTrusted from "../../components/banner/RecognizedTrusted";
 import LazyImage from "../../components/common/LazyImage";
@@ -444,10 +445,21 @@ const CourseDetails = () => {
       ? discountedPriceCents
       : basePriceCents;
 
-  const displayAmount = Math.max(Math.round(priceCents / 100), 1);
-  const originalAmount = Math.max(Math.round(originalNumeric), 0);
-  const offerAmount = Math.max(Math.round(offerNumeric), 0);
-  const couponAmount = Math.max(Math.round(discountedPriceCents / 100), 1);
+  // Integer amount (rupees) used for payment requests
+  const paymentAmount = Math.max(Math.round(priceCents / 100), 1);
+
+  // Precise rupee amounts for display (allow two decimals)
+  const displayRupees = Math.max(priceCents / 100, 0);
+  const originalRupees = course?.mrp_cents
+    ? Math.max(course.mrp_cents / 100, 0)
+    : Math.max(originalNumeric, 0);
+  const offerRupees = Math.max(offerNumeric, 0);
+  const couponRupees = Math.max(discountedPriceCents / 100, 0);
+
+  const formatRupees = (n) => {
+    if (typeof n !== "number" || !isFinite(n)) return "0.00";
+    return n.toFixed(2);
+  };
   const redirectTarget = encodeURIComponent(
     location.pathname + location.search
   );
@@ -455,13 +467,48 @@ const CourseDetails = () => {
   const courseName = course?.name || course?.title || "Course";
 
   const courseSubtitle =
-    course?.subtitle ||
+    course?.subtitle  ||  course?.description || course?.subtitle  ||
     "Join this course to enhance your skills and advance your career.";
 
   const instructorName =
     course?.instructor || course?.instructor_name || "Instructor";
-  const courseImage =
-    course?.image || course?.cover_image || "/placeholder-course.jpg";
+  const resolvePublicUrl = (val) => {
+    if (!val) return null;
+    // If an array was passed (gallery_images), pick the first entry
+    if (Array.isArray(val)) {
+      val = val.length ? val[0] : null;
+      if (!val) return null;
+    }
+
+    // If an object with url property was passed, use it
+    if (typeof val === "object" && val !== null && val.url) {
+      val = val.url;
+    }
+
+    // already a full URL
+    if (typeof val === "string" && /^https?:\/\//i.test(val)) return val;
+    // absolute path on host
+    if (typeof val === "string" && val.startsWith("/")) return val;
+    // likely a Supabase storage path like uploads/xxx
+    try {
+      const { data } = supabase.storage.from("New2").getPublicUrl(val);
+      if (data && data.publicUrl) return data.publicUrl;
+    } catch (e) {
+      // ignore
+    }
+    // fallback: return as-is (string)
+    return typeof val === "string" ? val : null;
+  };
+
+  const imageCandidate =
+    course?.thumbnail_url ||
+    course?.banner_url ||
+    (Array.isArray(course?.gallery_images) ? course.gallery_images[0] : course?.gallery_images) ||
+    course?.thumbnail ||
+    course?.cover_image ||
+    course?.thumbnailUrl;
+
+  const courseImage = resolvePublicUrl(imageCandidate) || "/placeholder-course.jpg";
   const courseLevel = course?.level || "Beginner";
   const courseDuration = course?.duration || "Self-paced";
   const courseUpdated = course?.updated || "Recently updated";
@@ -561,7 +608,7 @@ const CourseDetails = () => {
 
     try {
       const paymentData = await createPhonePePayment({
-        amount: displayAmount,
+        amount: paymentAmount,
         currency: "INR",
         courseId: course.id || course.skillId,
         courseSlug: courseSlug,
@@ -785,12 +832,7 @@ const CourseDetails = () => {
                   <span className="font-semibold">Duration:</span>{" "}
                   {courseDuration}
                 </span>
-              </div>
-
-              {/* <div className="flex items-center justify-center md:justify-start gap-2">
-                <Calendar size={18} className="text-blue-200 shrink-0" />
-                
-              </div> */}
+              </div> 
 
               <div className="flex items-center justify-center md:justify-start gap-2">
                 <User size={18} className="text-blue-200 shrink-0" />
@@ -805,17 +847,14 @@ const CourseDetails = () => {
 
             <div className="mt-6 flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <p className="text-xl sm:text-2xl font-bold flex items-baseline gap-2">
-                  {/* Show original price when it's different from the displayed price */}
-                  {originalAmount > 0 && originalAmount !== displayAmount && (
+                <p className="text-xl sm:text-2xl font-bold flex items-baseline gap-2"> 
+                  {originalRupees > 0 && originalRupees !== displayRupees && (
                     <span className="text-base sm:text-lg line-through opacity-70">
-                      ₹{originalAmount}
+                      ₹{formatRupees(originalRupees)}
                     </span>
                   )}
 
-                  {/* If there's an offer price (different from original) and no coupon, show it as main price */}
-                  {/* If coupon applied, displayAmount will be the coupon price */}
-                  <span>₹{displayAmount}</span>
+                    <span>₹{formatRupees(displayRupees)}</span>
                 </p>
 
                 {/* Small badge when coupon is applied */}
@@ -828,15 +867,21 @@ const CourseDetails = () => {
 
               {/* If coupon is applied and the offer price is different from the coupon price, show the offer price as reference */}
               {isCouponApplied &&
-                offerAmount > 0 &&
-                offerAmount !== couponAmount && (
-                  <p
-                    className="text-[1rem] text-white line-through decoration-red-300
-"
-                  >
-                    Offer Price: ₹{offerAmount}
+                offerRupees > 0 &&
+                offerRupees !== couponRupees && (
+                  <p className="text-[1rem] text-white line-through decoration-red-300">
+                    Offer Price: ₹{formatRupees(offerRupees)}
                   </p>
                 )}
+ 
+              {/* {(course?.price_cents || course?.mrp_cents || course?.discount_percentage) && (
+                <div className="mt-2 text-xl text-gray-600 space-y-1">
+                  
+                  {typeof course?.discount_percentage !== "undefined" && (
+                    <div>discount: {course.discount_percentage}%</div>
+                  )}
+                </div>
+              )} */}
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center md:justify-start gap-3">
                 <button
@@ -963,14 +1008,27 @@ const CourseDetails = () => {
         </div>
 
         {/* --- Course Description Section --- */}
-        {course?.description && (
+        {(course?.description || course?.meta_description|| course?.overview || (course?.detailed_description && Array.isArray(course.detailed_description.sections) && course.detailed_description.sections.length > 0)) && (
           <>
             <h2 className="text-2xl font-semibold mb-4 text-gray-800">
               Course Description
             </h2>
-            <div className="bg-gray-50 p-6 rounded-xl shadow mb-6 text-gray-700 prose prose-sm max-w-none">
-              <div dangerouslySetInnerHTML={{ __html: course.description }} />
-            </div>
+
+            {/* If detailed_description has sections, render them; otherwise show description/overview */}
+            {course?.detailed_description && Array.isArray(course.detailed_description.sections) && course.detailed_description.sections.length > 0 ? (
+              <div className="bg-gray-50 p-6 rounded-xl shadow mb-6 text-gray-700 prose prose-sm max-w-none">
+                {course.detailed_description.sections.map((sec, i) => (
+                  <div key={i} className="mb-6">
+                    {sec.title ? <h3 className="text-lg font-semibold mb-2">{sec.title}</h3> : null}
+                    <div dangerouslySetInnerHTML={{ __html: sec.content || sec.body || sec.text || "" }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-50 p-6 rounded-xl shadow mb-6 text-gray-700 prose prose-sm max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: course.description || course.overview || "" }} />
+              </div>
+            )}
           </>
         )}
 
@@ -1063,7 +1121,7 @@ const CourseDetails = () => {
         handleCopyUpi={handleCopyUpi}
         upiCopied={upiCopied}
         PAYMENT_UPI_ID={PAYMENT_UPI_ID}
-        displayAmount={displayAmount}
+        displayAmount={formatRupees(displayRupees)}
         detailsForm={detailsForm}
         handleDetailChange={handleDetailChange}
         user={user}

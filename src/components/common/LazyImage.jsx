@@ -24,10 +24,12 @@ export default function LazyImage({
   children,
   width,
   height,
+  fallbackSrc = "/placeholder-course.jpg",
 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -70,7 +72,7 @@ export default function LazyImage({
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
-          backgroundImage: visible ? `url(${src})` : undefined,
+          backgroundImage: visible ? `url(${loadError ? fallbackSrc : src})` : undefined,
           ...commonWrapperStyle,
         }}
       >
@@ -109,6 +111,10 @@ export default function LazyImage({
             alt={alt}
             style={{ display: "none" }}
             onLoad={() => setLoaded(true)}
+            onError={() => {
+              setLoadError(true);
+              setLoaded(true);
+            }}
             decoding="async"
           />
         )}
@@ -150,7 +156,7 @@ export default function LazyImage({
 
       {visible && (
         <img
-          src={src}
+          src={loadError ? fallbackSrc : src}
           alt={alt}
           className={imgClassName}
           style={{
@@ -162,6 +168,10 @@ export default function LazyImage({
             display: "block",
           }}
           onLoad={() => setLoaded(true)}
+          onError={() => {
+            setLoadError(true);
+            setLoaded(true);
+          }}
           decoding="async"
           loading="lazy"
         />
