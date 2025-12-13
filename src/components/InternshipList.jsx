@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, BookOpen, Users, Loader } from "lucide-react";
 import LazyImage from "./common/LazyImage";
+import { getCourseDetailPath } from "../utils/helpers";
 
 const InternshipList = ({
   title,
@@ -43,13 +44,15 @@ const InternshipList = ({
   const navigate = useNavigate();
 
   const handleEnroll = (internship) => {
-    if (internship?.slug) {
-      navigate(`/${internship.slug}`);
-      return;
-    }
-    if (internship?.id) {
-      navigate(`/course/${internship.id}`);
-      return;
+    try {
+      const path = getCourseDetailPath(internship);
+      const finalOfferPrice =
+        internship?.offerPrice ?? internship?.offerprice ?? internship?.price ?? internship?.originalPrice ?? null;
+      navigate(path, { state: { course: internship, finalOfferPrice } });
+    } catch (e) {
+      // fallback to simple navigate if helper fails
+      if (internship?.slug) navigate(`/${internship.slug}`);
+      else if (internship?.id) navigate(`/course/${internship.id}`);
     }
   };
 
