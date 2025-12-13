@@ -123,7 +123,7 @@ export default function SkillsPage() {
               transition-all duration-500 border border-indigo-200 hover:border-indigo-400
               overflow-hidden"
             >
-              <Link to={detailPath}>
+              <Link to={detailPath} state={{ course: skill, finalOfferPrice: skill.offerPrice }}>
                 <div className="relative">
                   <img
                     src={getValidImage(skill?.image)}
@@ -187,6 +187,7 @@ export default function SkillsPage() {
 
                   <Link
                     to={detailPath}
+                    state={{ course: skill, finalOfferPrice: skill.offerPrice }}
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-4 py-2 rounded-xl shadow-md hover:scale-105 transition-all"
                   >
                     Enroll
