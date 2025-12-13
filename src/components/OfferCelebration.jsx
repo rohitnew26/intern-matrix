@@ -22,6 +22,17 @@ const OfferCelebration = ({
   /* ---------------- Preload Audio Once ---------------- */
   const audioRef = useRef(null);
 
+  const onApplyRef = useRef(onApply);
+  const onStartRef = useRef(onStart);
+
+  useEffect(() => {
+    onApplyRef.current = onApply;
+  }, [onApply]);
+
+  useEffect(() => {
+    onStartRef.current = onStart;
+  }, [onStart]);
+
   useEffect(() => {
     audioRef.current = new Audio(sound);
     audioRef.current.preload = "auto";
@@ -116,6 +127,12 @@ const OfferCelebration = ({
 
   /* ---------------- Start Celebration ---------------- */
   const startCelebration = useCallback(() => {
+    // clear any previous run
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    console.debug("OfferCelebration: startCelebration called");
+
     setIsOpen(true);
 
     playSoundEffect(); // plays instantly (no delay)
@@ -123,16 +140,27 @@ const OfferCelebration = ({
 
     timeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-      onApply();
+      try {
+        if (onApplyRef.current) onApplyRef.current();
+      } catch (e) {
+        console.error("OfferCelebration onApply error", e);
+      }
     }, duration + 2000);
   }, [duration, playSoundEffect, onApply]);
 
   /* ---------------- External Trigger ---------------- */
   useEffect(() => {
-    if (trigger) {
-      onStart();
-      startCelebration();
+    const active = typeof trigger === "number" ? trigger > 0 : Boolean(trigger);
+    if (!active) return;
+    console.debug("OfferCelebration: trigger changed", trigger);
+    try {
+      if (onStartRef.current) onStartRef.current();
+    } catch (e) {
+      console.error("OfferCelebration onStart error", e);
     }
+    startCelebration();
+    // only run when `trigger` changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trigger]);
 
   /* ---------------- Cleanup ---------------- */

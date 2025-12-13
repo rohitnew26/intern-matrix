@@ -19,12 +19,7 @@ import { supabase } from "../../lib/supabaseClient";
 
 import RecognizedTrusted from "../../components/banner/RecognizedTrusted";
 import LazyImage from "../../components/common/LazyImage";
-import OfferCelebration from "../../components/OfferCelebration";
-import {
-  fetchCourseById,
-  fetchCourseBySlug,
-  fetchCourses,
-} from "../../services/courseService";
+import OfferCelebration from "../../components/OfferCelebration"; 
 import {
   getCourseSlug,
   parseCourseRouteParam,
@@ -115,7 +110,7 @@ const CourseDetails = () => {
   const [courseError, setCourseError] = useState("");
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [skillsData, setSkillsData] = useState([]);
-  const [celebrateTrigger, setCelebrateTrigger] = useState(false);
+  const [celebrateTrigger, setCelebrateTrigger] = useState(0);
   const [showEnrollmentFlow, setShowEnrollmentFlow] = useState(false);
   const [enrollmentStep, setEnrollmentStep] = useState(1);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
@@ -522,6 +517,8 @@ const CourseDetails = () => {
       setIsCouponApplied(true);
       setCouponDiscount(SPECIAL_DISCOUNT);
       setCouponError("");
+      // trigger celebration for special global coupon
+      setCelebrateTrigger((c) => (Number(c) || 0) + 1);
       return;
     }
 
@@ -557,9 +554,8 @@ const CourseDetails = () => {
     );
     setCouponError("");
     // trigger visual celebration in parent (OfferCelebration)
-    // set a short-lived trigger state to signal celebration component
-    setCelebrateTrigger(true);
-    setTimeout(() => setCelebrateTrigger(false), 1200);
+    // increment numeric trigger so OfferCelebration runs reliably each time
+    setCelebrateTrigger((c) => (Number(c) || 0) + 1);
   };
 
   const handleRemoveCoupon = () => {
