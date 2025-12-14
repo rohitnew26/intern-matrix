@@ -29,6 +29,8 @@ import All_intenship from "./pages/course/All_Internship.jsx";
 import VerifyCertificate from "./pages/Certificates/VerifyCertificate";
 import SampleCertificate from "./pages/Certificates/SampleCertificate.jsx";
 import Contact from "./pages/Contact/Contact";
+import AdminContact from "./pages/Contact/AdminContact.jsx";
+
 import Dashboard from "./pages/UserDashboard/Dashboard";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
@@ -37,8 +39,7 @@ import Callback from "./pages/auth/Callback.jsx";
 import ForgotPassword from "./pages/auth/ForgotPassword.jsx";
 import RefundPolicy from "./pages/RefundPolicy/RefundPolicy";
 import Support from "./pages/RefundPolicy/Support.jsx";
-import AdminControlRoom from "./pages/Admin/AdminControlRoom";
-import AdminDashboard from "./pages/Admin/Dashboard.jsx";
+import AdminControlRoom from "./pages/Admin/AdminControlRoom"; 
 const PhonePeReturn = lazy(() => import("./pages/payment/PhonePeReturn"));
 
 // New Admin Panel
@@ -177,6 +178,7 @@ function App() {
 
         <Route path="/course" element={<Course />} /> 
         <Route path="/contact" element={<Contact />} />
+        <Route path='/no-admin-contact-recive' element={<AdminContact />} />
         
         {/* --- NEW ADMIN PANEL --- */}
         <Route
@@ -220,16 +222,6 @@ function App() {
             }
           />
         </Route>
-
-        {/* --- ADMIN DASHBOARD ROUTE (Updated with AdminRoute) --- */}
-        {/* <Route
-          path="/admin/dashboard"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        /> */}
 
         <Route
           path="/industrial-training"

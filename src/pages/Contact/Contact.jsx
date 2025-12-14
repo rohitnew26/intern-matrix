@@ -1,12 +1,9 @@
- 
-    
 import React, { useState } from "react";
 import contactImage from "../../assets/images/contactImage.jpg";
 import { IoLocationOutline } from "react-icons/io5";
 import { FiPhoneCall } from "react-icons/fi";
 import { MdOutlineMessage } from "react-icons/md";
-
-import apiClient from "../../services/apiClient";
+import { supabase } from "../../lib/supabaseClient.js";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -19,7 +16,7 @@ const Contact = () => {
 
   const [loading, setLoading] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
-  const [msgType, setMsgType] = useState(""); // success or error
+  const [msgType, setMsgType] = useState(""); // "success" or "error"
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -32,11 +29,21 @@ const Contact = () => {
     setMsgType("");
 
     try {
-      const res = await apiClient.post("/api/contact/submit", formData);
+      const { error } = await supabase.from("contacts").insert([
+        {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message,
+        },
+      ]);
+
+      if (error) throw error;
 
       setMsgType("success");
-      setResponseMsg(res.data.message || "Message sent successfully!");
-      
+      setResponseMsg("Message sent successfully!");
+
       // Reset form
       setFormData({
         firstName: "",
@@ -46,17 +53,10 @@ const Contact = () => {
         message: "",
       });
 
-      // Clear message after 5 seconds
-      setTimeout(() => {
-        setResponseMsg("");
-      }, 5000);
-    } catch (error) {
+      setTimeout(() => setResponseMsg(""), 5000);
+    } catch (err) {
       setMsgType("error");
-      setResponseMsg(
-        error.response?.data?.message || 
-        error.message || 
-        "Failed to send message. Please try again."
-      );
+      setResponseMsg(err.message || "Failed to send message. Try again.");
     } finally {
       setLoading(false);
     }
@@ -76,13 +76,14 @@ const Contact = () => {
           <p className="text-yellow-400 font-semibold tracking-wider uppercase">
             Get in Touch
           </p>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Contact Us</h1>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            Contact Us
+          </h1>
         </div>
       </div>
 
       {/* Main Section */}
       <div className="my-20 w-[90%] md:w-[85%] mx-auto flex flex-col lg:flex-row justify-between gap-12 p-2">
-
         {/* Left Info */}
         <div className="flex flex-col gap-10 w-full lg:w-5/12 lg:pr-8">
           <h1 className="text-4xl text-black font-bold mb-4">
@@ -99,15 +100,21 @@ const Contact = () => {
               <IoLocationOutline />
             </div>
             <div className="font-medium text-gray-700">
-              <h3 className="text-black font-bold text-lg mb-1">Our Location</h3>
-              <p>Intern Matrix, NARAYAN Bhawan, KAIMA SHIKOH, Marufganj, Patna City, Patna, Bihar 800008</p>
+              <h3 className="text-black font-bold text-lg mb-1">
+                Our Location
+              </h3>
+              <p>
+                Intern Matrix, NARAYAN Bhawan, KAIMA SHIKOH, Marufganj, Patna
+                City, Patna, Bihar 800008
+              </p>
             </div>
           </div>
 
           {/* Map Section */}
-          <h2 className="text-2xl font-bold mt-4 text-black">Our Office Address</h2>
+          <h2 className="text-2xl font-bold mt-4 text-black">
+            Our Office Address
+          </h2>
           <div className="h-1 w-16 bg-yellow-500 rounded mb-3"></div>
-
           <div className="w-full h-[350px] md:h-[450px] rounded-xl overflow-hidden shadow-lg">
             <iframe
               src="https://www.google.com/maps?q=Intern%20Matrix%20Patna%20Bihar&z=17&output=embed"
@@ -131,31 +138,35 @@ const Contact = () => {
           </a>
 
           {/* Phone */}
-          <div className="flex items-start gap-5 group cursor-default">
+          <div className="flex items-start gap-5 group cursor-default mt-6">
             <div className="bg-black h-14 w-14 flex items-center justify-center text-yellow-400 text-2xl rounded-full">
               <FiPhoneCall />
             </div>
             <div className="font-medium text-gray-700">
-              <h3 className="text-black font-bold text-lg mb-1">Phone Number</h3>
+              <h3 className="text-black font-bold text-lg mb-1">
+                Phone Number
+              </h3>
               <p>+91 9288075422</p>
             </div>
           </div>
 
           {/* Email */}
-          <div className="flex items-start gap-5 group cursor-default">
+          <div className="flex items-start gap-5 group cursor-default mt-4">
             <div className="bg-black h-14 w-14 flex items-center justify-center text-yellow-400 text-2xl rounded-full">
               <MdOutlineMessage />
             </div>
             <div className="font-medium text-gray-700">
-              <h3 className="text-black font-bold text-lg mb-1">Email Address</h3>
+              <h3 className="text-black font-bold text-lg mb-1">
+                Email Address
+              </h3>
               <p>info@internmatrix.com</p>
             </div>
           </div>
         </div>
 
         {/* Right Form */}
-        <div className="bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-gray-100 w-full lg:w-7/12 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-yellow-500"></div>
+        <div className="bg-white p-8 md:p-10 rounded-2xl w-full lg:w-7/12 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-yellow-500 "></div>
 
           <h2 className="text-3xl font-bold mb-8 text-black">
             Send a Message
@@ -210,11 +221,13 @@ const Contact = () => {
             ></textarea>
 
             {responseMsg && (
-              <p className={`text-center font-semibold p-3 rounded-lg ${
-                msgType === "success" 
-                  ? "bg-green-50 text-green-600 border border-green-200" 
-                  : "bg-red-50 text-red-600 border border-red-200"
-              }`}>
+              <p
+                className={`text-center font-semibold p-3 rounded-lg ${
+                  msgType === "success"
+                    ? "bg-green-50 text-green-600 border border-green-200"
+                    : "bg-red-50 text-red-600 border border-red-200"
+                }`}
+              >
                 {responseMsg}
               </p>
             )}
@@ -227,6 +240,15 @@ const Contact = () => {
               {loading ? "Sending..." : "SEND MESSAGE"}
             </button>
           </form>
+
+          <div className="mt-6 text-center bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+            <p className="text-sm text-gray-700">
+              <span className="font-bold text-black">Note:</span> We usually
+              respond to all inquiries within{" "}
+              <span className="font-bold">24 hours</span>. Please check your
+              spam folder if you don't hear from us.
+            </p>
+          </div>
         </div>
       </div>
     </div>

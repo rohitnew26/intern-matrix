@@ -6,7 +6,7 @@ import EnrolledCourses from "./EnrolledCourses";
 import Wishlist from "./Wishlist";
 import MyProfile from "./MyProfile";
 import QuizAttempts from "./QuizAttempts";
-import Review from "./Review";
+// import Review from "./Review";
 import OrderHistory from "./OrderHistory";
 import QnA from "./QnA";
 import { useAuth } from "../../context/AuthContext";
@@ -63,7 +63,7 @@ const Dashboard = () => {
           {selection === "courses" && <EnrolledCourses />}
           {selection === "wishlist" && <Wishlist />}
           {selection === "quiz" && <QuizAttempts />}
-          {selection === "review" && <Review />}
+          {/* {selection === "review" && <Review />} */}
           {selection === "orders" && <OrderHistory />}
           {selection === "qna" && <QnA />}
         </div>
