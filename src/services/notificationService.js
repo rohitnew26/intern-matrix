@@ -1,6 +1,6 @@
 import apiClient from "./apiClient";
 
-const ADMIN_EMAIL = "update@internmatrix.com";
+const ADMIN_EMAIL = "info@internmatrix.com";
 
 const resolveEndpoint = () => {
   return (
